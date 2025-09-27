@@ -12,12 +12,14 @@ struct DetailView: View {
     @State var viewModel: DetailViewModel = DetailViewModel()
     
     var body: some View {
-        List(viewModel.data, id: \.self) { item in
-            HStack {
-                Image(systemName: "globe")
-                    .imageScale(.large)
-                    .foregroundStyle(.tint)
-                Text(item)
+        Section(header: Text("Navigate back to force task cancellation")) {
+            List(viewModel.data, id: \.self) { item in
+                HStack {
+                    Image(systemName: "globe")
+                        .imageScale(.large)
+                        .foregroundStyle(.tint)
+                    Text(item)
+                }
             }
         }
         .refreshable {
@@ -32,43 +34,37 @@ struct DetailView: View {
 @Observable
 class DetailViewModel {
     
-    /* When we capture the async work in a Task property in the ViewModel,
-    the DetailView's .task modifier no longer owns it,
-    so navigation away from the view won't cancel it automatically */    
-    private var currentTask: Task<Void, Never>? = nil
+    /*  */
+    var isLoading: Bool = false
     var data: [String] = []
     
     func initializeData() async {
-        currentTask = Task {
-            do {
-                print("Initialize Data task started! 🔵")
-                try await loadData()
-                print("Initialize Data task finished! ✅")
-            } catch {
-                print("Initialize Data task cancelled! 🔴")
-            }
+        do {
+            print("Initialize Data task started! 🔵")
+            try await loadData()
+            print("Initialize Data task finished! ✅")
+        } catch {
+            print("Initialize Data task cancelled! 🔴")
         }
     }
     
     func refreshData() async {
-        currentTask?.cancel()
-        currentTask = Task {
-            do {
-                print("Refresh started! 🔵")
-                try await loadData()
-                print("Refresh finished! ✅")
-            } catch {
-                print("Refresh cancelled! 🔴")
-            }
+        do {
+            print("Refresh started! 🔵")
+            try await loadData()
+            print("Refresh finished! ✅")
+        } catch {
+            print("Refresh cancelled! 🔴")
         }
     }
     
     func loadData() async throws {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
         try await Task.sleep(for: .seconds(5))
-        if Task.isCancelled { return }
-        await MainActor.run {
-            self.data = ["Item 1", "item 2", "A lizard 🦎", "A beer 🍺", "A cat 🐱"]
-        }
+        self.data = ["Item 1", "item 2", "A lizard 🦎", "A beer 🍺", "A cat 🐱"]
     }
 }
 
