@@ -28,13 +28,18 @@ struct DetailView: View {
         .task {
             await viewModel.initializeData()
         }
+        .onDisappear {
+            viewModel.cancelRefresh()
+        }
     }
 }
 
 @Observable
 class DetailViewModel {
     
-    /*  */
+    /* Storing the refresh task in the VM so we can have a cancellation point
+       Then we call cancelRefresh() from the .onDisappear modifier in the View */
+    private var refreshTask: Task<Void, Never>? = nil
     var isLoading: Bool = false
     var data: [String] = []
     
@@ -49,12 +54,15 @@ class DetailViewModel {
     }
     
     func refreshData() async {
-        do {
-            print("Refresh started! 🔵")
-            try await loadData()
-            print("Refresh finished! ✅")
-        } catch {
-            print("Refresh cancelled! 🔴")
+        refreshTask?.cancel()
+        refreshTask = Task {
+            do {
+                print("Refresh started! 🔵")
+                try await loadData()
+                print("Refresh finished! ✅")
+            } catch {
+                print("Refresh cancelled! 🔴")
+            }
         }
     }
     
@@ -62,9 +70,15 @@ class DetailViewModel {
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        
+
         try await Task.sleep(for: .seconds(5))
+        try Task.checkCancellation()
+        
         self.data = ["Item 1", "item 2", "A lizard 🦎", "A beer 🍺", "A cat 🐱"]
+    }
+    
+    func cancelRefresh() {
+        refreshTask?.cancel()
     }
 }
 
